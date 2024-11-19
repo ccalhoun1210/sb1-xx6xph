@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Tenant/Company management
+model Company {
+  id              String    @id @default(cuid())
+  name            String
+  subdomain       String    @unique
+  plan            String    @default("BASIC") // BASIC, PRO, ENTERPRISE
+  status          String    @default("ACTIVE") // ACTIVE, SUSPENDED, CANCELLED
+  maxUsers        Int       @default(5)
+  maxStorage      Int       @default(5368709120) // 5GB in bytes
+  storageUsed     Int       @default(0)
+  users           User[]
+  customers       Customer[]
+  machines        Machine[]
+  workOrders      WorkOrder[]
+  parts           Part[]
+  settings        Json?     @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([subdomain])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    
+  name         String
+  passwordHash String
+  role         String    @default("TECHNICIAN") // ADMIN, TECHNICIAN, USER
+  companyId    String
+  company      Company   @relation(fields: [companyId], references: [id])
+  workOrders   WorkOrder[]
+  messages     Message[]
+  active       Boolean   @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([email, companyId])
+  @@index([companyId])
+}
+
+model Customer {
+  id              String    @id @default(cuid())
+  name            String
+  email           String
+  phone           String
+  address         String?
+  preferredContact String   @default("PHONE") // PHONE, EMAIL, SMS
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  machines        Machine[]
+  workOrders      WorkOrder[]
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([email, companyId])
+  @@index([companyId])
+}
+
+model Machine {
+  id            String    @id @default(cuid())
+  model         String
+  serialNumber  String
+  purchaseDate  DateTime
+  warrantyEnd   DateTime?
+  condition     String    @default("GOOD") // GOOD, FAIR, POOR
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id])
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  workOrders    WorkOrder[]
+  attachments   Attachment[]
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([serialNumber, companyId])
+  @@index([companyId])
+}
+
+model WorkOrder {
+  id              String    @id @default(cuid())
+  status          String    @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, AWAITING_PARTS, COMPLETED
+  priority        String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  serviceType     String    @default("MAINTENANCE") // MAINTENANCE, REPAIR, WARRANTY
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  machineId       String
+  machine         Machine   @relation(fields: [machineId], references: [id])
+  technicianId    String?
+  technician      User?     @relation(fields: [technicianId], references: [id])
+  reportedIssue   String
+  resolution      String?
+  laborTime       Float     @default(0)
+  laborRate       Float     @default(85)
+  parts           Part[]
+  photos          Photo[]
+  messages        Message[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  dueDate         DateTime?
+
+  @@index([companyId])
+  @@index([customerId])
+  @@index([machineId])
+  @@index([technicianId])
+}
+
+model Part {
+  id          String    @id @default(cuid())
+  name        String
+  partNumber  String
+  description String?
+  price       Float
+  quantity    Int
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([workOrderId])
+}
+
+model Photo {
+  id          String    @id @default(cuid())
+  url         String
+  name        String
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId])
+  @@index([workOrderId])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  text        String
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  senderId    String
+  sender      User      @relation(fields: [senderId], references: [id])
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId])
+  @@index([senderId])
+  @@index([workOrderId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  type         String   // POWER_NOZZLE, AQUA_MATE, MINI_JET
+  serialNumber String?
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  machineId    String
+  machine      Machine  @relation(fields: [machineId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([machineId])
+}

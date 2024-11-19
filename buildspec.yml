@@ -1,0 +1,21 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - npm ci
+  pre_build:
+    commands:
+      - npm run prisma:generate
+  build:
+    commands:
+      - npm run build
+      - npm run server:build
+artifacts:
+  files:
+    - '**/*'
+  base-directory: dist
+cache:
+  paths:
+    - 'node_modules/**/*'

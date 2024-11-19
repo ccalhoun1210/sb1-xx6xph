@@ -1,0 +1,37 @@
+{
+  "rules": {
+    "messages": {
+      "$companyId": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('companyId').val() === $companyId",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('companyId').val() === $companyId",
+        "$workOrderId": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('companyId').val() === $companyId",
+          ".write": "auth != null && root.child('users').child(auth.uid).child('companyId').val() === $companyId",
+          "$messageId": {
+            ".validate": "newData.hasChildren(['text', 'senderId', 'timestamp'])",
+            "text": {
+              ".validate": "newData.isString() && newData.val().length <= 1000"
+            },
+            "senderId": {
+              ".validate": "newData.val() === auth.uid"
+            },
+            "timestamp": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            }
+          }
+        }
+      }
+    },
+    "typing": {
+      "$companyId": {
+        "$workOrderId": {
+          "$userId": {
+            ".read": "auth != null && root.child('users').child(auth.uid).child('companyId').val() === $companyId",
+            ".write": "auth != null && $userId === auth.uid",
+            ".validate": "newData.isBoolean()"
+          }
+        }
+      }
+    }
+  }
+}

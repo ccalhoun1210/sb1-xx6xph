@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rainbowworkshop.com/sitemap.xml

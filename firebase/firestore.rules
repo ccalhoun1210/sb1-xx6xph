@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function belongsToCompany(companyId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    // Allow users to read/write their own profile
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Allow users to read/write company data
+    match /companies/{companyId} {
+      allow read: if isSignedIn() && belongsToCompany(companyId);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && belongsToCompany(companyId) && isAdmin();
+    }
+
+    // Allow users to read/write customers
+    match /customers/{customerId} {
+      allow read: if isSignedIn() && belongsToCompany(resource.data.companyId);
+      allow write: if isSignedIn() && belongsToCompany(request.resource.data.companyId);
+    }
+
+    // Allow users to read/write machines
+    match /machines/{machineId} {
+      allow read: if isSignedIn() && belongsToCompany(resource.data.companyId);
+      allow write: if isSignedIn() && belongsToCompany(request.resource.data.companyId);
+    }
+
+    // Allow users to read/write work orders
+    match /work_orders/{workOrderId} {
+      allow read: if isSignedIn() && belongsToCompany(resource.data.companyId);
+      allow write: if isSignedIn() && belongsToCompany(request.resource.data.companyId);
+    }
+
+    // Allow users to read/write parts
+    match /parts/{partId} {
+      allow read: if isSignedIn() && belongsToCompany(resource.data.companyId);
+      allow write: if isSignedIn() && belongsToCompany(request.resource.data.companyId);
+    }
+
+    // Allow users to read/write messages
+    match /messages/{messageId} {
+      allow read: if isSignedIn() && belongsToCompany(resource.data.companyId);
+      allow write: if isSignedIn() && belongsToCompany(request.resource.data.companyId);
+    }
+  }
+}
